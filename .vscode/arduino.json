@@ -1,0 +1,5 @@
+{
+    "board": "arduino:avr:uno",
+    "sketch": "wired_demo.ino",
+    "port": "COM4"
+}
