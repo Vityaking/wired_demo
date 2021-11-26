@@ -4,7 +4,7 @@
 #include <HX711.h>
 #include <CD74HC4067.h>
 
-CD74HC4067 mux(4, 5, 6, 7);                     // create a new CD74HC4067 object with its four control pins
+CD74HC4067 mux(2, 5, 6, 7);                     // create a new CD74HC4067 object with its four control pins
 HX711 scale;                                    //name
 const int common_pin = 8;                       // select a pin to share with the 16 channels of the CD74HC4067
 const int objects[] = {5};                      // an array for the channels that are connected to a HX711
@@ -26,6 +26,8 @@ static String message = "";
 void subscribeReceive(char* topic, byte* payload, unsigned int length){};
 
 void setup() {  
+  pinMode(4, OUTPUT);                           //setting the SD card pin to HIGH hoping it would solve the problem
+  digitalWrite(4, HIGH);
   pinMode(common_pin, INPUT);                   // set the initial mode of the common pin.
   pinMode(9, OUTPUT);                           // enable input by setting pin15 LOW, output by setting the pin HIGH
   digitalWrite(9, LOW);
