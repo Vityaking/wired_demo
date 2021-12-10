@@ -18,13 +18,9 @@ void subscribeReceive(char* topic, byte* payload, unsigned int length); // funct
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };  // setting mac and ip adresses
 
 IPAddress ip(192, 168, 0, 102);
-IPAddress Server(192, 168, 0, 103); 
+IPAddress Server(192, 168, 0, 100); 
 EthernetClient ethClient;
 PubSubClient mqttClient(Server, 1883, subscribeReceive, ethClient);
-
-static String temp = "";
-static String message = "";
-byte test_temp[] = "";                     // temporary variable for the case of using one hx711
 
 void subscribeReceive(char* topic, byte* payload, unsigned int length){};
 
@@ -56,7 +52,7 @@ void setup()
 
 	ethClient.connect(Server, 1883);
 	delay(1000);
-	if (mqttClient.connect("arduino"))        // Attempt to connect to the server with the ID "arduino"
+	if (mqttClient.connect("arduino"))      	  // Attempt to connect to the server with the ID "arduino"
 	{
 		Serial.println("Connection has been established, well done");  
 		mqttClient.setCallback(subscribeReceive);     // Establish the subscribe event  
@@ -66,98 +62,73 @@ void setup()
 		Serial.println("Looks like the server connection failed...");
 	}
 
-	Serial.print("objects number: ");
-	Serial.println(objects_number);
-
-	mux.channel(5);								// only one hx711 is available, so using a loop is unneccessary
-	scale.begin(DOUT_PIN, SCK_PIN);
-	scale.power_up();
-	scale.set_scale(2280.f);                    // sets the scale, written in README
-	scale.tare();                               // resets scale to 0
-	Serial.print("get units: \t\t");
-	Serial.println(scale.get_units(5), 1);      // print the average of 5 readings from the ADC minus tare weight, divided by the SCALE parameter set with set_scale
-	scale.power_down();                         // sets the scale to sleep mode
-	Serial.println("scale is initialized");
-
-	/*for (int i = 0; i == objects_number; i++)     // initiates all scales
+	for (int i = 0; i < objects_number; i++)     // initiates all scales
 	{
 		mux.channel(objects[i]);
 		scale.begin(DOUT_PIN, SCK_PIN);
 		scale.power_up();
 		scale.set_scale(2280.f);                    // sets the scale, written in README
 		scale.tare();                               // resets scale to 0
-		Serial.print("get units: \t\t");
 		Serial.println(scale.get_units(5), 1);      // print the average of 5 readings from the ADC minus tare weight, divided by the SCALE parameter set with set_scale
 		scale.power_down();                         // sets the scale to sleep mode
-		Serial.println("test");
-	}*/  //will be needed if multiple hx711s will be available, those ADCs should be connected in numeric order starting at input0
+		Serial.println("scale is initialized");
+	} 
 }
+
 
 void loop() 
 {  
 	mqttClient.loop();                           // this has to be at the start of the loop
 	delay(1000);								 // temporary delay, will be deleted later
 	mqttClient.subscribe("chairs");              // subsrcribing to "chairs" topic
-	temp = "";
-	/*for (int i = 0; i == objects_number; i++)    // getting input from all connected pins
+	bool retain = 0;
+	for (int i = 0; i < objects_number; i++)    // getting input from all connected pins
 	{
-		mux.channel(i);
+		mux.channel(objects[i]);
 		scale.power_up();
-		temp.concat(i);
-		if (scale.get_units(5) > threshold)       // 1 means the chair is occupied
+		if ((0<=objects[i]) && (objects[i]<10))
 		{
-			temp.concat(" 1 ");
+			byte message[2];
+			message[0] = '0' + objects[i];		// the message byte array will be sent to the MQTT server, its last digit shows the occupancy
+			message[1] = '0';					// everything before the last digit will be the ID number
+			float merleg = scale.get_units(5);
+		if (merleg > threshold)       // 1 means the chair is occupied
+		{
+			message[1] = '0' + 1;
+			if (mqttClient.publish("chairs", message, (2*sizeof(byte)), retain)) Serial.println("Publish message success");
+			Serial.print(message[0]);Serial.print(message[1]);
 		}
 		else
 		{
-			temp.concat(" 0 ");
-		}   
-		message.concat(temp);        
+			message[1] = '0' + 0;
+			if (mqttClient.publish("chairs", message, (2*sizeof(byte)), retain)) Serial.println("Publish message success");
+			Serial.print(message[0]);Serial.print(message[1]);
+		}
+		}
+
+		if ((10<=objects[i]) && (objects[i]<16))
+		{
+			byte message[3];
+			message[0] = '0' + (objects[i]/10);
+			message[1] = '0' + (objects[i]%10);
+			message[2] = '0';
+			float merleg = scale.get_units(5);
+		if (merleg > threshold)       // 1 means the chair is occupied
+		{
+			message[2] = '0' + 1;
+			if (mqttClient.publish("chairs", message, (3*sizeof(byte)), retain)) Serial.println("Publish message success");
+			Serial.print(message[0]);Serial.print(message[1]); Serial.print(message[2]);
+		}
+		else
+		{
+			message[2] = '0' + 0;
+			if (mqttClient.publish("chairs", message, (3*sizeof(byte)), retain)) Serial.println("Publish message success");
+			Serial.print(message[0]);Serial.print(message[1]); Serial.print(message[2]);
+		}
+ 		}
 		delay(100);
 		scale.power_down();
-		Serial.println(message);
-		Serial.println("one read");
-	}*/
-
-	bool retain = 0;
-	int message_length = message.length();
-	char* payloadx[message_length];  
-	for (int i = 0; i == message_length; i++)
-	{
-		payloadx[i]=message[i];
 	}
-
-	byte test_temp[1] = {0};
-	//mux.channel(5);
-	scale.power_up();
-	delay(200);
-	long merleg = scale.read();
-	Serial.println(scale.read());
-	Serial.println(merleg);
-	scale.power_down();
-	if (merleg > 800000)       // 1 means the chair is occupied
-		{
-			//test_temp[0] = 1;
-			if (mqttClient.publish("chairs", "1", sizeof(byte), retain)) Serial.println("Publish message success");
-		}
-		else
-		{
-			//test_temp[0] = 0;
-			if (mqttClient.publish("chairs", "0", sizeof(byte), retain)) Serial.println("Publish message success");
-		}
-	Serial.print("read:");
-	Serial.println(test_temp[0]);
-
-	//if (mqttClient.publish("chairs", test_temp[0], sizeof(byte), retain)) Serial.println("Publish message success");
-
-	/*if(mqttClient.publish("chairs", message_length, retain)) // publish the message to "chairs" topic
-	{
-		Serial.println("Publish message success");
-	}
-	else
-	{
-		Serial.println("Could not send message :(");
-	}*/
 	if (mqttClient.endPublish());
 	delay(1000);                             // don't overload the server
 }
