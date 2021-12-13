@@ -10,6 +10,7 @@ HX711 scale;                                    //name
 const int common_pin = 8;                       // select a pin to share with the 16 channels of the CD74HC4067
 const int objects[] = {5};                      // an array for the channels that are connected to a HX711
 const int objects_number = sizeof(objects)/sizeof(int);
+static int states[objects_number];				// in this array the previous read of the given sensor is stored, false value filtering
 const int DOUT_PIN = 8;                         // HX711 wiring
 const int SCK_PIN = 3;
 const int threshold = 20;                       // threshold of sensors
@@ -94,15 +95,37 @@ void loop()
 			float merleg = scale.get_units(5);
 		if (merleg > threshold)       // 1 means the chair is occupied
 		{
-			message[1] = '0' + 1;
-			if (mqttClient.publish("chairs", message, (2*sizeof(byte)), retain)) Serial.println("Publish message success");
-			Serial.print(message[0]);Serial.print(message[1]);
+			if (states[i] == 1)
+			{
+				message[1] = '0' + 1;
+				if (mqttClient.publish("chairs", message, (2*sizeof(byte)), retain)) Serial.println("Publish message success");
+				Serial.print(message[0]);Serial.print(message[1]);
+				states[i] = 1;
+			}
+			else 
+			{
+				message[1] = '0' + 0;
+				if (mqttClient.publish("chairs", message, (2*sizeof(byte)), retain)) Serial.println("Publish message success");
+				Serial.print(message[0]);Serial.print(message[1]);
+				states[i] = 1;
+			}
 		}
 		else
 		{
-			message[1] = '0' + 0;
-			if (mqttClient.publish("chairs", message, (2*sizeof(byte)), retain)) Serial.println("Publish message success");
-			Serial.print(message[0]);Serial.print(message[1]);
+			if (states[i] == 0)
+			{
+				message[1] = '0' + 0;
+				if (mqttClient.publish("chairs", message, (2*sizeof(byte)), retain)) Serial.println("Publish message success");
+				Serial.print(message[0]);Serial.print(message[1]);
+				states[i] = 0;
+			}
+			else 
+			{
+				message[1] = '0' + 1;
+				if (mqttClient.publish("chairs", message, (2*sizeof(byte)), retain)) Serial.println("Publish message success");
+				Serial.print(message[0]);Serial.print(message[1]);
+				states[i] = 0;
+			}
 		}
 		}
 
@@ -115,19 +138,43 @@ void loop()
 			float merleg = scale.get_units(5);
 		if (merleg > threshold)       // 1 means the chair is occupied
 		{
-			message[2] = '0' + 1;
-			if (mqttClient.publish("chairs", message, (3*sizeof(byte)), retain)) Serial.println("Publish message success");
-			Serial.print(message[0]);Serial.print(message[1]); Serial.print(message[2]);
+			if (states[i] == 1)
+			{
+				message[2] = '0' + 1;
+				if (mqttClient.publish("chairs", message, (3*sizeof(byte)), retain)) Serial.println("Publish message success");
+				Serial.print(message[0]);Serial.print(message[1]); Serial.print(message[2]);
+				states[i] = 1;
+			}
+			else
+			{
+				message[2] = '0' + 0;
+				if (mqttClient.publish("chairs", message, (3*sizeof(byte)), retain)) Serial.println("Publish message success");
+				Serial.print(message[0]);Serial.print(message[1]); Serial.print(message[2]);
+				states[i] = 1;
+			}
 		}
 		else
 		{
-			message[2] = '0' + 0;
-			if (mqttClient.publish("chairs", message, (3*sizeof(byte)), retain)) Serial.println("Publish message success");
-			Serial.print(message[0]);Serial.print(message[1]); Serial.print(message[2]);
+			if (states[i] == 0)
+			{
+				message[2] = '0' + 0;
+				if (mqttClient.publish("chairs", message, (3*sizeof(byte)), retain)) Serial.println("Publish message success");
+				Serial.print(message[0]);Serial.print(message[1]); Serial.print(message[2]);
+				states[i] = 0;
+			}
+			else
+			{
+				message[2] = '0' + 1;
+				if (mqttClient.publish("chairs", message, (3*sizeof(byte)), retain)) Serial.println("Publish message success");
+				Serial.print(message[0]);Serial.print(message[1]); Serial.print(message[2]);
+				states[i] = 0;
+			}
 		}
  		}
 		delay(100);
 		scale.power_down();
+		Serial.print("states: ");
+		Serial.println(states[0]);
 	}
 	if (mqttClient.endPublish());
 	delay(1000);                             // don't overload the server
